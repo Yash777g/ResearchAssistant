@@ -1,0 +1,660 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>GenAI Research Assistant</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;600&family=IBM+Plex+Sans:wght@300;400;600;700&display=swap');
+
+    :root {
+      --bg: #0d0f14;
+      --surface: #161920;
+      --surface2: #1e2230;
+      --border: #2a2f3d;
+      --accent: #4f8ef7;
+      --accent2: #a78bfa;
+      --success: #34d399;
+      --warn: #fbbf24;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --mono: 'IBM Plex Mono', monospace;
+      --sans: 'IBM Plex Sans', sans-serif;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--sans);
+      min-height: 100vh;
+      display: flex;
+    }
+
+    /* ── Sidebar ── */
+    .sidebar {
+      width: 240px;
+      min-height: 100vh;
+      background: var(--surface);
+      border-right: 1px solid var(--border);
+      padding: 24px 0;
+      display: flex;
+      flex-direction: column;
+      position: fixed;
+      top: 0; left: 0; bottom: 0;
+    }
+    .sidebar-logo {
+      padding: 0 20px 24px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 16px;
+    }
+    .sidebar-logo h1 {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--accent);
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      font-family: var(--mono);
+    }
+    .sidebar-logo p {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+      font-family: var(--mono);
+    }
+    .nav-item {
+      padding: 10px 20px;
+      cursor: pointer;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--muted);
+      border-left: 3px solid transparent;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .nav-item:hover { color: var(--text); background: var(--surface2); }
+    .nav-item.active { color: var(--accent); border-left-color: var(--accent); background: rgba(79,142,247,0.08); }
+    .nav-icon { font-size: 15px; }
+
+    /* ── Main content ── */
+    .main {
+      margin-left: 240px;
+      flex: 1;
+      padding: 32px;
+      max-width: 900px;
+    }
+
+    .page { display: none; }
+    .page.active { display: block; }
+
+    .page-title {
+      font-size: 22px;
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+    .page-desc {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 28px;
+      font-family: var(--mono);
+    }
+
+    /* ── Card ── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card-title {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 16px;
+      font-family: var(--mono);
+    }
+
+    /* ── Inputs ── */
+    input[type="text"], textarea, select {
+      width: 100%;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 10px 14px;
+      font-size: 14px;
+      font-family: var(--sans);
+      outline: none;
+      transition: border-color 0.15s;
+      margin-bottom: 12px;
+    }
+    input[type="text"]:focus, textarea:focus, select:focus {
+      border-color: var(--accent);
+    }
+    textarea { min-height: 90px; resize: vertical; }
+    label { font-size: 12px; color: var(--muted); font-family: var(--mono); margin-bottom: 5px; display: block; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      font-family: var(--sans);
+      transition: all 0.15s;
+    }
+    .btn-primary { background: var(--accent); color: #fff; }
+    .btn-primary:hover { background: #3a7bf0; }
+    .btn-secondary { background: var(--surface2); color: var(--text); border: 1px solid var(--border); }
+    .btn-secondary:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-danger { background: #ef4444; color: #fff; }
+    .btn-danger:hover { background: #dc2626; }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+    /* ── Upload zone ── */
+    .upload-zone {
+      border: 2px dashed var(--border);
+      border-radius: 8px;
+      padding: 40px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 16px;
+    }
+    .upload-zone:hover, .upload-zone.dragover {
+      border-color: var(--accent);
+      background: rgba(79,142,247,0.05);
+    }
+    .upload-zone .icon { font-size: 36px; margin-bottom: 12px; }
+    .upload-zone p { font-size: 13px; color: var(--muted); }
+    .upload-zone strong { color: var(--accent); }
+
+    /* ── Result box ── */
+    .result-box {
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 20px;
+      font-size: 14px;
+      line-height: 1.75;
+      white-space: pre-wrap;
+      font-family: var(--mono);
+      max-height: 500px;
+      overflow-y: auto;
+      margin-top: 16px;
+      display: none;
+    }
+    .result-box.visible { display: block; }
+
+    /* ── Tags ── */
+    .tag {
+      display: inline-block;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-family: var(--mono);
+      font-weight: 600;
+      margin: 3px;
+    }
+    .tag-blue { background: rgba(79,142,247,0.15); color: var(--accent); }
+    .tag-purple { background: rgba(167,139,250,0.15); color: var(--accent2); }
+    .tag-green { background: rgba(52,211,153,0.15); color: var(--success); }
+
+    /* ── Status ── */
+    .status-bar {
+      padding: 10px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      font-family: var(--mono);
+      margin-bottom: 12px;
+      display: none;
+    }
+    .status-bar.visible { display: flex; align-items: center; gap: 8px; }
+    .status-info { background: rgba(79,142,247,0.1); border: 1px solid rgba(79,142,247,0.3); color: var(--accent); }
+    .status-success { background: rgba(52,211,153,0.1); border: 1px solid rgba(52,211,153,0.3); color: var(--success); }
+    .status-error { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.3); color: #f87171; }
+
+    .spinner {
+      width: 14px; height: 14px;
+      border: 2px solid currentColor;
+      border-top-color: transparent;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+      flex-shrink: 0;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .sources-list { margin-top: 12px; }
+    .sources-list p { font-size: 12px; color: var(--muted); margin-bottom: 6px; font-family: var(--mono); }
+    .doc-list { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+
+    /* ── Overview Stats ── */
+    .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 12px; margin-bottom: 24px; }
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 16px;
+      text-align: center;
+    }
+    .stat-card .num { font-size: 28px; font-weight: 700; font-family: var(--mono); color: var(--accent); }
+    .stat-card .lbl { font-size: 11px; color: var(--muted); margin-top: 4px; font-family: var(--mono); }
+
+    /* ── File input ── */
+    #file-input { display: none; }
+
+    /* ── Section select checkboxes ── */
+    .checkbox-group { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 14px; }
+    .checkbox-item { display: flex; align-items: center; gap: 6px; }
+    .checkbox-item input { width: auto; margin: 0; }
+    .checkbox-item label { font-size: 12px; color: var(--text); margin: 0; cursor: pointer; }
+
+    hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+  </style>
+</head>
+<body>
+
+<!-- Sidebar -->
+<nav class="sidebar">
+  <div class="sidebar-logo">
+    <h1>⬡ ResearchAI</h1>
+    <p>GenAI Assistant v1.0</p>
+  </div>
+  <div class="nav-item active" onclick="showPage('upload')">
+    <span class="nav-icon">1.</span> Upload Papers
+  </div>
+  <div class="nav-item" onclick="showPage('qa')">
+    <span class="nav-icon">2.</span> Ask Questions
+  </div>
+  <div class="nav-item" onclick="showPage('summarize')">
+    <span class="nav-icon">3.</span> Summarize
+  </div>
+  <div class="nav-item" onclick="showPage('gaps')">
+    <span class="nav-icon">4.</span> Gap Detection
+  </div>
+  <div class="nav-item" onclick="showPage('litreview')">
+    <span class="nav-icon">5.</span> Literature Review
+  </div>
+</nav>
+
+<!-- Main Content -->
+<main class="main">
+
+  <!-- ── Upload Page ── -->
+  <div class="page active" id="page-upload">
+    <div class="page-title">Upload Research Papers</div>
+    <div class="page-desc">// Upload PDFs to build your knowledge base</div>
+
+    <div class="card">
+      <div class="card-title">Select PDF Files</div>
+      <div class="upload-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+        <div class="icon">📂</div>
+        <p><strong>Click to browse</strong> or drag & drop PDFs here</p>
+        <p style="margin-top:6px; font-size:11px;">Supports multiple files · PDF only</p>
+      </div>
+      <input type="file" id="file-input" accept=".pdf" multiple />
+      <div id="selected-files" style="margin-bottom:12px;"></div>
+      <div id="upload-status" class="status-bar"></div>
+      <button class="btn btn-primary" id="upload-btn" onclick="uploadFiles()" disabled>
+        ⬆ Upload & Process
+      </button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Uploaded Documents</div>
+      <div id="doc-list-container">
+        <p style="color:var(--muted); font-size:13px;">No documents uploaded yet.</p>
+      </div>
+      <hr/>
+      <button class="btn btn-danger" onclick="resetAll()" style="margin-top:4px;">🗑 Reset All Documents</button>
+    </div>
+  </div>
+
+  <!-- ── Q&A Page ── -->
+  <div class="page" id="page-qa">
+    <div class="page-title">Ask Questions</div>
+    <div class="page-desc">// RAG-powered Q&A with source citations</div>
+    <div class="card">
+      <label>Your Question</label>
+      <textarea id="qa-question" placeholder="e.g. What methodology did the authors use for data collection?"></textarea>
+      <label>Number of chunks to retrieve</label>
+      <input type="text" id="qa-topk" value="6" style="width:80px; margin-bottom:12px;"/>
+      <br/>
+      <div id="qa-status" class="status-bar"></div>
+      <button class="btn btn-primary" onclick="askQuestion()">🔍 Get Answer</button>
+      <div id="qa-result" class="result-box"></div>
+      <div class="sources-list" id="qa-sources"></div>
+    </div>
+  </div>
+
+  <!-- ── Summarize Page ── -->
+  <div class="page" id="page-summarize">
+    <div class="page-title">Summarize Paper</div>
+    <div class="page-desc">// AI-powered paper summarization (academic / bullet / brief)</div>
+    <div class="card">
+      <label>Select Document</label>
+      <select id="sum-filename">
+        <option value="">-- Select a document --</option>
+      </select>
+      <label>Summary Style</label>
+      <select id="sum-style">
+        <option value="academic">Academic (Full structured summary)</option>
+        <option value="bullet">Bullet Points</option>
+        <option value="brief">Brief (3-5 sentences)</option>
+      </select>
+      <div id="sum-status" class="status-bar"></div>
+      <button class="btn btn-primary" onclick="summarizeDoc()">📝 Generate Summary</button>
+      <div id="sum-result" class="result-box"></div>
+    </div>
+  </div>
+
+  <!-- ── Gap Detection Page ── -->
+  <div class="page" id="page-gaps">
+    <div class="page-title">Research Gap Detection</div>
+    <div class="page-desc">// Identifies unexplored areas, limitations & future directions</div>
+    <div class="card">
+      <label>Focus Topic (optional — leave blank to analyze all papers)</label>
+      <input type="text" id="gap-topic" placeholder="e.g. transformer-based NLP models, climate change adaptation..."/>
+      <label>Number of Gaps to Detect</label>
+      <input type="text" id="gap-num" value="5" style="width:80px;"/>
+      <br/>
+      <div id="gap-status" class="status-bar"></div>
+      <button class="btn btn-primary" onclick="detectGaps()">🔍 Detect Research Gaps</button>
+      <div id="gap-result" class="result-box"></div>
+      <div class="sources-list" id="gap-sources"></div>
+    </div>
+  </div>
+
+  <!-- ── Literature Review Page ── -->
+  <div class="page" id="page-litreview">
+    <div class="page-title">Auto Literature Review</div>
+    <div class="page-desc">// Generate a structured academic literature review from your papers</div>
+    <div class="card">
+      <label>Research Topic / Title of Review</label>
+      <input type="text" id="lit-topic" placeholder="e.g. Deep Learning for Medical Image Segmentation"/>
+      <label>Sections to Include</label>
+      <div class="checkbox-group">
+        <div class="checkbox-item"><input type="checkbox" id="sec-intro" value="introduction" checked/><label for="sec-intro">Introduction</label></div>
+        <div class="checkbox-item"><input type="checkbox" id="sec-themes" value="themes" checked/><label for="sec-themes">Key Themes</label></div>
+        <div class="checkbox-item"><input type="checkbox" id="sec-methods" value="methodologies" checked/><label for="sec-methods">Methodologies</label></div>
+        <div class="checkbox-item"><input type="checkbox" id="sec-findings" value="findings" checked/><label for="sec-findings">Key Findings</label></div>
+        <div class="checkbox-item"><input type="checkbox" id="sec-gaps" value="gaps" checked/><label for="sec-gaps">Research Gaps</label></div>
+        <div class="checkbox-item"><input type="checkbox" id="sec-conc" value="conclusion" checked/><label for="sec-conc">Conclusion</label></div>
+      </div>
+      <div id="lit-status" class="status-bar"></div>
+      <button class="btn btn-primary" onclick="generateLitReview()">📚 Generate Literature Review</button>
+      <div id="lit-result" class="result-box"></div>
+      <div class="sources-list" id="lit-sources"></div>
+    </div>
+  </div>
+
+</main>
+
+<script>
+const API = '';   // Same origin — FastAPI serves this HTML
+
+// ── Navigation ─────────────────────────────────────────────────────────────
+function showPage(name) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + name).classList.add('active');
+  event.currentTarget.classList.add('active');
+  if (name !== 'upload') loadDocList();
+}
+
+// ── Status helpers ──────────────────────────────────────────────────────────
+function setStatus(id, type, msg, loading=false) {
+  const el = document.getElementById(id);
+  el.className = `status-bar visible status-${type}`;
+  el.innerHTML = loading ? `<span class="spinner"></span> ${msg}` : msg;
+}
+function clearStatus(id) {
+  document.getElementById(id).className = 'status-bar';
+}
+function showResult(id, text) {
+  const el = document.getElementById(id);
+  el.textContent = text;
+  el.classList.add('visible');
+}
+function hideResult(id) {
+  document.getElementById(id).classList.remove('visible');
+}
+
+// ── File Upload ─────────────────────────────────────────────────────────────
+let selectedFiles = [];
+
+document.getElementById('file-input').addEventListener('change', function() {
+  selectedFiles = Array.from(this.files);
+  updateSelectedFilesUI();
+});
+
+const dropZone = document.getElementById('drop-zone');
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dropZone.classList.remove('dragover');
+  selectedFiles = Array.from(e.dataTransfer.files).filter(f => f.name.endsWith('.pdf'));
+  updateSelectedFilesUI();
+});
+
+function updateSelectedFilesUI() {
+  const container = document.getElementById('selected-files');
+  if (selectedFiles.length === 0) {
+    container.innerHTML = '';
+    document.getElementById('upload-btn').disabled = true;
+    return;
+  }
+  container.innerHTML = selectedFiles.map(f =>
+    `<span class="tag tag-blue">📄 ${f.name}</span>`
+  ).join('');
+  document.getElementById('upload-btn').disabled = false;
+}
+
+async function uploadFiles() {
+  if (selectedFiles.length === 0) return;
+  setStatus('upload-status', 'info', `Processing ${selectedFiles.length} file(s)...`, true);
+
+  const formData = new FormData();
+  selectedFiles.forEach(f => formData.append('files', f));
+
+  try {
+    const res  = await fetch(`${API}/api/documents/upload`, { method: 'POST', body: formData });
+    const data = await res.json();
+
+    const results = data.uploaded;
+    const success = results.filter(r => r.status === 'success');
+    const failed  = results.filter(r => r.status === 'failed');
+
+    let msg = `✅ ${success.length} file(s) processed.`;
+    if (failed.length) msg += ` ⚠ ${failed.length} failed.`;
+    setStatus('upload-status', 'success', msg);
+    loadDocList();
+    selectedFiles = [];
+    document.getElementById('selected-files').innerHTML = '';
+    document.getElementById('upload-btn').disabled = true;
+  } catch(e) {
+    setStatus('upload-status', 'error', `Upload failed: ${e.message}`);
+  }
+}
+
+// ── Load Document List ───────────────────────────────────────────────────────
+async function loadDocList() {
+  try {
+    const res  = await fetch(`${API}/api/documents/list`);
+    const data = await res.json();
+    const docs = data.documents;
+
+    // Update sidebar doc list
+    const container = document.getElementById('doc-list-container');
+    if (docs.length === 0) {
+      container.innerHTML = '<p style="color:var(--muted); font-size:13px;">No documents uploaded yet.</p>';
+    } else {
+      container.innerHTML = '<div class="doc-list">' +
+        docs.map(d => `<span class="tag tag-green">📄 ${d}</span>`).join('') +
+        '</div>' +
+        `<p style="color:var(--muted);font-size:11px;font-family:var(--mono);margin-top:10px;">${docs.length} document(s) in vector store</p>`;
+    }
+
+    // Update summarize dropdown
+    const sel = document.getElementById('sum-filename');
+    sel.innerHTML = '<option value="">-- Select a document --</option>' +
+      docs.map(d => `<option value="${d}">${d}</option>`).join('');
+  } catch(e) {}
+}
+
+// ── Reset ────────────────────────────────────────────────────────────────────
+async function resetAll() {
+  if (!confirm('Delete ALL uploaded documents and reset the vector store?')) return;
+  try {
+    await fetch(`${API}/api/documents/reset`, { method: 'DELETE' });
+    loadDocList();
+    setStatus('upload-status', 'info', 'All documents cleared.');
+  } catch(e) {
+    setStatus('upload-status', 'error', `Error: ${e.message}`);
+  }
+}
+
+// ── Q&A ──────────────────────────────────────────────────────────────────────
+async function askQuestion() {
+  const question = document.getElementById('qa-question').value.trim();
+  const topk     = parseInt(document.getElementById('qa-topk').value) || 6;
+  if (!question) return;
+
+  setStatus('qa-status', 'info', 'Searching documents and generating answer...', true);
+  hideResult('qa-result');
+  document.getElementById('qa-sources').innerHTML = '';
+
+  try {
+    const res  = await fetch(`${API}/api/qa/ask`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ question, top_k: topk })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail);
+
+    clearStatus('qa-status');
+    showResult('qa-result', data.answer);
+
+    if (data.sources?.length) {
+      document.getElementById('qa-sources').innerHTML =
+        '<p>Sources used:</p>' +
+        data.sources.map(s => `<span class="tag tag-purple">📌 ${s}</span>`).join('');
+    }
+  } catch(e) {
+    setStatus('qa-status', 'error', e.message);
+  }
+}
+
+// ── Summarize ────────────────────────────────────────────────────────────────
+async function summarizeDoc() {
+  const filename = document.getElementById('sum-filename').value;
+  const style    = document.getElementById('sum-style').value;
+  if (!filename) { setStatus('sum-status', 'error', 'Please select a document.'); return; }
+
+  setStatus('sum-status', 'info', 'Generating summary (this may take a minute)...', true);
+  hideResult('sum-result');
+
+  try {
+    const res  = await fetch(`${API}/api/summarize/summarize`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ filename, style })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail);
+
+    clearStatus('sum-status');
+    showResult('sum-result', data.summary);
+  } catch(e) {
+    setStatus('sum-status', 'error', e.message);
+  }
+}
+
+// ── Gap Detection ─────────────────────────────────────────────────────────────
+async function detectGaps() {
+  const topic    = document.getElementById('gap-topic').value.trim();
+  const num_gaps = parseInt(document.getElementById('gap-num').value) || 5;
+
+  setStatus('gap-status', 'info', 'Analyzing papers for research gaps...', true);
+  hideResult('gap-result');
+  document.getElementById('gap-sources').innerHTML = '';
+
+  try {
+    const res  = await fetch(`${API}/api/research/gap-detection`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ topic, num_gaps })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail);
+
+    clearStatus('gap-status');
+    showResult('gap-result', data.research_gaps);
+
+    if (data.papers_analyzed?.length) {
+      document.getElementById('gap-sources').innerHTML =
+        '<p>Papers analyzed:</p>' +
+        data.papers_analyzed.map(s => `<span class="tag tag-blue">📄 ${s}</span>`).join('');
+    }
+  } catch(e) {
+    setStatus('gap-status', 'error', e.message);
+  }
+}
+
+// ── Literature Review ─────────────────────────────────────────────────────────
+async function generateLitReview() {
+  const topic = document.getElementById('lit-topic').value.trim();
+  if (!topic) { setStatus('lit-status', 'error', 'Please enter a topic.'); return; }
+
+  const sections = ['introduction','themes','methodologies','findings','gaps','conclusion']
+    .filter(s => document.getElementById('sec-' + s.replace('methodologies','methods').replace('introduction','intro').replace('findings','findings').replace('conclusion','conc').replace('themes','themes').replace('gaps','gaps'))?.checked);
+
+  // Map IDs correctly
+  const sectionMap = {
+    'intro': 'introduction', 'themes': 'themes', 'methods': 'methodologies',
+    'findings': 'findings', 'gaps': 'gaps', 'conc': 'conclusion'
+  };
+  const selected = Object.entries(sectionMap)
+    .filter(([id]) => document.getElementById('sec-' + id)?.checked)
+    .map(([, val]) => val);
+
+  setStatus('lit-status', 'info', 'Generating literature review (may take 1-2 minutes)...', true);
+  hideResult('lit-result');
+  document.getElementById('lit-sources').innerHTML = '';
+
+  try {
+    const res  = await fetch(`${API}/api/research/literature-review`, {
+      method: 'POST', headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ topic, include_sections: selected })
+    });
+    const data = await res.json();
+    if (!res.ok) throw new Error(data.detail);
+
+    clearStatus('lit-status');
+    showResult('lit-result', data.literature_review);
+
+    if (data.papers_used?.length) {
+      document.getElementById('lit-sources').innerHTML =
+        '<p>Papers used:</p>' +
+        data.papers_used.map(s => `<span class="tag tag-purple">📄 ${s}</span>`).join('');
+    }
+  } catch(e) {
+    setStatus('lit-status', 'error', e.message);
+  }
+}
+
+// Load docs on init
+loadDocList();
+</script>
+</body>
+</html>
